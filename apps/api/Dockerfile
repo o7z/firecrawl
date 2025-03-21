@@ -10,17 +10,11 @@ RUN pnpm config set registry https://registry.npmmirror.com
 COPY . /app
 WORKDIR /app
 
-RUN echo ">>>>>>> base ok!"
-
 FROM base AS prod-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 
-RUN echo ">>>>>>> prod-deps ok!"
-
 FROM base AS build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install && pnpm run build
-
-RUN echo ">>>>>>> build ok!"
 
 # Install Go
 FROM golang:1.24 AS go-base
@@ -32,8 +26,6 @@ RUN go mod tidy && \
     go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
     chmod +x html-to-markdown.so
 
-RUN echo ">>>>>>> go-base ok!"
-
 # Install Rust
 FROM rust:1-slim AS rust-base
 COPY sharedLibs/html-transformer /app/sharedLibs/html-transformer
@@ -42,8 +34,6 @@ COPY sharedLibs/html-transformer /app/sharedLibs/html-transformer
 RUN cd /app/sharedLibs/html-transformer && \
     cargo build --release && \
     chmod +x target/release/libhtml_transformer.so
-
-RUN echo ">>>>>>> rust-base ok!"
 
 FROM base
 COPY --from=build /app/dist /app/dist
@@ -56,7 +46,5 @@ EXPOSE 8080
 
 # Make sure the entrypoint script has the correct line endings
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh
-
-RUN echo ">>>>>>> all ok!"
 
 ENTRYPOINT "/app/docker-entrypoint.sh"
